@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from 'react';
 import ReactDOM from 'react-dom';
-import { changeCurrentTime, changeSong, toggleIsPlaying } from '../actions/player';
+import { changeCurrentTime, changeSong, toggleIsPlaying, toggleIsFading , fadeInNextSong} from '../actions/player';
 import Playlist from '../components/Playlist';
 import Popover from '../components/Popover';
 import SongDetails from '../components/SongDetails';
@@ -45,6 +45,7 @@ class Player extends Component {
     this.togglePlay = this.togglePlay.bind(this);
     this.toggleRepeat = this.toggleRepeat.bind(this);
     this.toggleShuffle = this.toggleShuffle.bind(this);
+    this.toggleFade = this.toggleFade.bind(this);
 
     const previousVolumeLevel = Number.parseFloat(LocalStorageUtils.get('volume'));
     this.state = {
@@ -55,6 +56,7 @@ class Player extends Component {
       muted: false,
       repeat: false,
       shuffle: false,
+      fade: false,
       volume: previousVolumeLevel || 1,
     };
   }
@@ -108,6 +110,7 @@ class Player extends Component {
   changeSong(changeType) {
     const { dispatch } = this.props;
     dispatch(changeSong(changeType));
+    dispatch(toggleIsFading(false));
   }
 
   changeVolume(e) {
@@ -196,11 +199,18 @@ class Player extends Component {
     }
 
     const { dispatch, player } = this.props;
+    const { duration } = this.state;
     const audioElement = e.currentTarget;
     const currentTime = Math.floor(audioElement.currentTime);
 
     if (currentTime === player.currentTime) {
       return;
+    }
+
+    if(duration - currentTime < 10){
+      if(this.state.fade){
+        dispatch(toggleIsFading(true));
+      }
     }
 
     dispatch(changeCurrentTime(currentTime));
@@ -308,6 +318,10 @@ class Player extends Component {
 
   toggleShuffle() {
     this.setState({ shuffle: !this.state.shuffle });
+  }
+
+  toggleFade() {
+    this.setState({ fade: !this.state.fade });
   }
 
   renderDurationBar() {
@@ -460,6 +474,12 @@ class Player extends Component {
                 onClick={this.toggleShuffle}
               >
                 <i className="icon ion-shuffle" />
+              </div>
+              <div
+                className={`player-button ${(this.state.fade ? ' active' : '')}`}
+                onClick={this.toggleFade}
+              >
+                <i className="icon ion-android-options" />
               </div>
               <Popover className="player-button top-right">
                 <i className="icon ion-android-list" />
