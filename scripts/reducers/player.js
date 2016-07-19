@@ -4,7 +4,6 @@ const initialState = {
   currentSongIndex: null,
   currentTime: 0,
   isPlaying: false,
-  isFading: false,
   selectedPlaylists: [],
 };
 
@@ -32,13 +31,6 @@ export default function player(state = initialState, action) {
       return Object.assign({}, state, {
         isPlaying: action.isPlaying,
       });
-
-    case types.TOGGLE_IS_FADING:
-      return Object.assign({}, state, {
-        isFading: action.isFading,
-      });
-
-
 
     default:
       return state;

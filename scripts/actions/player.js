@@ -51,12 +51,6 @@ export function changeSong(changeType) {
   };
 }
 
-export function fadeInNextSong() {
-    return (dispatch, getState) => {
-        console.log('fading next song');
-    }
-}
-
 export function playSong(playlist, songIndex) {
   return (dispatch, getState) => {
     dispatch(changeCurrentTime(0));
@@ -76,12 +70,5 @@ export function toggleIsPlaying(isPlaying) {
   return {
     type: types.TOGGLE_IS_PLAYING,
     isPlaying,
-  };
-}
-
-export function toggleIsFading(isFading) {
-  return {
-    type: types.TOGGLE_IS_FADING,
-      isFading,
   };
 }

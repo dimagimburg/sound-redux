@@ -1,10 +1,10 @@
 import React, { Component, PropTypes } from 'react';
 import ReactDOM from 'react-dom';
-import { changeCurrentTime, changeSong, toggleIsPlaying, toggleIsFading , fadeInNextSong} from '../actions/player';
+import { changeCurrentTime, changeSong, toggleIsPlaying, fadeNextSong } from '../actions/player';
 import Playlist from '../components/Playlist';
 import Popover from '../components/Popover';
 import SongDetails from '../components/SongDetails';
-import { CHANGE_TYPES } from '../constants/SongConstants';
+import { CHANGE_TYPES, FADE_DURATION_SECONDS } from '../constants/SongConstants';
 import { formatSeconds, formatStreamUrl } from '../utils/FormatUtils';
 import { offsetLeft } from '../utils/MouseUtils';
 import { getImageUrl } from '../utils/SongUtils';
@@ -25,6 +25,7 @@ class Player extends Component {
     super(props);
     this.changeSong = this.changeSong.bind(this);
     this.changeVolume = this.changeVolume.bind(this);
+    this.handleFading = this.handleFading.bind(this);
     this.handleEnded = this.handleEnded.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleLoadedMetadata = this.handleLoadedMetadata.bind(this);
@@ -57,6 +58,8 @@ class Player extends Component {
       repeat: false,
       shuffle: false,
       fade: false,
+      isFading: false,
+      fadingOutSongId: null,
       volume: previousVolumeLevel || 1,
     };
   }
@@ -110,7 +113,6 @@ class Player extends Component {
   changeSong(changeType) {
     const { dispatch } = this.props;
     dispatch(changeSong(changeType));
-    dispatch(toggleIsFading(false));
   }
 
   changeVolume(e) {
@@ -207,13 +209,47 @@ class Player extends Component {
       return;
     }
 
-    if(duration - currentTime < 10){
+    if(duration - currentTime < FADE_DURATION_SECONDS){
       if(this.state.fade){
-        dispatch(toggleIsFading(true));
+        this.handleFading();
       }
     }
 
     dispatch(changeCurrentTime(currentTime));
+  }
+
+  handleFading() {
+    if(!this.state.isFading){
+      this.setState({ isFading: true });
+      const { songs, playingSongId } = this.props;
+      const fadingOutSong = songs[playingSongId];
+      const src = formatStreamUrl(fadingOutSong.stream_url);
+      const currentAudio = ReactDOM.findDOMNode(this.refs.audio);
+      const fadingOutAudioElement = ReactDOM.findDOMNode(this.refs.fadingOutAudio);
+      fadingOutAudioElement.volume = currentAudio.volume;
+      fadingOutAudioElement.src = src;
+      setTimeout(() => {
+        fadingOutAudioElement.currentTime = currentAudio.currentTime + 0.09;
+        fadingOutAudioElement.play();
+        fadingOutAudioElement.addEventListener('play',() => {
+          setTimeout(() => {
+            currentAudio.pause();
+            this.handleEnded();
+          }, 2000);
+        },false);
+        const fadeInterval = setInterval(() => {
+          fadingOutAudioElement.volume = fadingOutAudioElement.volume * 0.9;
+          if(!this.state.isFading){
+            clearInterval(fadeInterval);
+          }
+          if(fadingOutAudioElement.volume < 0.01){
+            fadingOutAudioElement.volume = 0;
+            clearInterval(fadeInterval);
+            this.setState({ isFading: false });
+          }
+        }, 200);
+      }, 2000);
+    }
   }
 
   handleVolumeChange(e) {
@@ -418,6 +454,7 @@ class Player extends Component {
     return (
       <div className="player">
         <audio id="audio" ref="audio" src={formatStreamUrl(song.stream_url)} />
+        <audio id="fading-out-audio" ref="fadingOutAudio" />
         <div className="container">
           <div className="player-main">
             <div className="player-section player-info">
